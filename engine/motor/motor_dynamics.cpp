@@ -1,7 +1,7 @@
-#include "interface.hpp"
 #include <cmath>
+#include "types.hpp"
 
-double calculate_ROT_Current(
+double calculate_ROT_current(
     double i, 
     double V, 
     double omega, 
@@ -18,7 +18,7 @@ double calculate_ROT_Current(
     return derivative;
 }
 
-double calculate_ROT_Omega(
+double calculate_ROT_omega(
     double i, 
     double omega, 
     double load_torque, 
@@ -34,7 +34,7 @@ double calculate_ROT_Omega(
     return derivative;
 }
 
-double calculate_ROT_Temp(
+double calculate_ROT_temp(
     double i,
     double T,
     const Thermal_Param& thermal_param,
