@@ -1,21 +1,21 @@
 #pragma once
 
-typedef struct {
+struct Electric_Param {
     double R_0;
     double T_0;
     double L_a;
     double K_e;
     double alpha;
-} Electric_Param;
+};
 
-typedef struct {
+struct Mechanical_Param {
     double K_t;
     double D;
     double J;
-} Mechanical_Param;
+} ;
 
-typedef struct{
+struct Thermal_Param {
     double T_ambient;
     double R_th;
     double C_th;
-} Thermal_Param;
+};

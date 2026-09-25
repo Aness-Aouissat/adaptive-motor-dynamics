@@ -22,11 +22,11 @@ enum class thermal_fields {
     C_th
 };
 
-typedef struct{
+struct Request{
     std::unordered_map<electric_fields, double> electric_map;
     std::unordered_map<mechanical_fields, double> mechanical_map;
     std::unordered_map<thermal_fields, double> thermal_map;
-} Request;
+};
 
 void mutate_electric_fields(const Request&);
 void mutate_mechanical_fields(const Request&);
