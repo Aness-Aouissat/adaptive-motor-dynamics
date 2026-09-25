@@ -1,5 +1,5 @@
-#include "motor_dynamics.hpp"
-#include "motor_parameters.hpp"
+#include "motor/motor_dynamics.hpp"
+#include "motor/motor_parameters.hpp"
 #include "simulation_types.hpp"
 #include <vector>
 #include <random>
