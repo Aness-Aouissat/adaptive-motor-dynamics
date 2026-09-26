@@ -8,7 +8,7 @@ static std::vector<Transition> dataset_1, dataset_2, dataset_3, dataset_4;
 
 static Current_State current_state;
 
-Transition generate_data_sample( 
+Transition generate_transition( 
     Current_State& current_state, 
     Input input
 ) {
@@ -56,7 +56,7 @@ Transition generate_data_sample(
     return transition;
 }
 
-std::vector<Transition> generate_data(
+std::vector<Transition> generate_dataset(
     int vector_num,
     int samples
 ) {
@@ -75,7 +75,7 @@ std::vector<Transition> generate_data(
                 double random_V = V_range(generator);
                 double random_load_torque = load_torque_range(generator);
                 Input input = {random_V, random_load_torque};
-                Transition transition = generate_data_sample(current_state, input);
+                Transition transition = generate_transition(current_state, input);
                 dataset_1.push_back(transition);
                 i++;
             };
@@ -87,7 +87,7 @@ std::vector<Transition> generate_data(
                 double random_V = V_range(generator);
                 double random_load_torque = load_torque_range(generator);
                 Input input = {random_V, random_load_torque};
-                Transition transition = generate_data_sample(current_state, input);
+                Transition transition = generate_transition(current_state, input);
                 dataset_2.push_back(transition);
                 i++;
             };
@@ -99,7 +99,7 @@ std::vector<Transition> generate_data(
                 double random_V = V_range(generator);
                 double random_load_torque = load_torque_range(generator);
                 Input input = {random_V, random_load_torque};
-                Transition transition = generate_data_sample(current_state, input);
+                Transition transition = generate_transition(current_state, input);
                 dataset_3.push_back(transition);
                 i++;
             };
@@ -111,7 +111,7 @@ std::vector<Transition> generate_data(
                 double random_V = V_range(generator);
                 double random_load_torque = load_torque_range(generator);
                 Input input = {random_V, random_load_torque};
-                Transition transition = generate_data_sample(current_state, input);
+                Transition transition = generate_transition(current_state, input);
                 dataset_4.push_back(transition);
                 i++;
             };
