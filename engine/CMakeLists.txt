@@ -1,5 +1,7 @@
 set(PYBIND11_FINDPYTHON ON)
 
+find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
+
 pybind11_add_module(
     cpp_py_interface 
     
@@ -13,5 +15,4 @@ pybind11_add_module(
     )
 target_include_directories(cpp_py_interface PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/motor ${CMAKE_CURRENT_SOURCE_DIR}/simulation)
 
-install(TARGETS cpp_py_interface DESTINATION .)
-
+install(TARGETS cpp_py_interface DESTINATION "${Python_SITEARCH}")
