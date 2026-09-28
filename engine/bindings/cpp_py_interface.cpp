@@ -30,7 +30,7 @@ PYBIND11_MODULE(cpp_py_interface, m) {
         .def_readonly("input", &Transition::input)
         .def_readonly("new_state", &Transition::new_state);
 
-    m.def("generate_dataset", &generate_dataset, py::return_value_policy::move);
+    m.def("generate_datasets", &generate_datasets, py::return_value_policy::move);
 
     py::native_enum<electric_fields>(m, "electric_fields", "enum.Enum")
         .value("R_0", electric_fields::R_0)
