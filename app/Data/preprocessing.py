@@ -3,9 +3,9 @@ import numpy as np
 
 def to_np_arrays(dataset: tc.converted_dataset) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
-    curr_state_array = np.empty((len(dataset), 3))
-    input_array = np.empty((len(dataset), 2))
-    new_state_array = np.empty((len(dataset), 3))
+    curr_state_array = np.empty((0, 3))
+    input_array = np.empty((0, 2))
+    new_state_array = np.empty((0, 3))
 
     for transition in dataset: 
 
