@@ -1,5 +1,7 @@
 import transition_conversion as tc
 import numpy as np
+from enum import Enum
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 def to_np_arrays(dataset: tc.converted_dataset) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
@@ -38,5 +40,21 @@ def generate_model_targets(dataset: tuple[np.ndarray, np.ndarray, np.ndarray]) -
 
     return model_targets
 
-# def standardize or normalize():
-#    None
+class Scaler(Enum):
+    NONE = 0
+    NORMALIZE = 1
+    STANDARDIZE = 2
+
+def normalize(data: np.ndarray):
+
+    scaler = MinMaxScaler()
+    scaler.fit(data)
+
+    return scaler
+
+def standardize(data: np.ndarray):
+
+    scaler = StandardScaler()
+    scaler.fit(data)
+
+    return scaler
