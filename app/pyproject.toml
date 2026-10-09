@@ -5,6 +5,14 @@ description = "Python application and ML layer for Adaptive Motor Dynamics"
 readme = "../README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "numpy>=2.5.3",
+    "numpy>=2.5.2",
     "scikit-learn>=1.9.1",
+    "torch>=2.14.1",
 ]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
