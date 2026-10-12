@@ -1,4 +1,4 @@
-import transition_conversion as tc
+import Data.transition_conversion as tc
 import numpy as np
 from enum import Enum
 from sklearn.preprocessing import StandardScaler, MinMaxScaler

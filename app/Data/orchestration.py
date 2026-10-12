@@ -1,6 +1,6 @@
-import preprocessing as pp
-import splitting as s
-import transition_conversion as tc
+import Data.preprocessing as pp
+import Data.splitting as s
+import Data.transition_conversion as tc
 import cpp_py_interface as cpi
 import numpy as np
 
