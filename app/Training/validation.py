@@ -1,5 +1,4 @@
 import Data.orchestration as o
-import Data.preprocessing as pp
 import Models.linear as l
 import Models.polynomial as p
 import Training.mlp_training as mlp
@@ -7,15 +6,10 @@ import Training.config as config
 import torch
 
 from Models.mlp import from_np_to_tensor, from_tensor_to_np
+from Training.model_type import Model
 from sklearn.metrics import r2_score
-from enum import Enum
 
-split_data = o.validate_pipeline(20, 5000, 0, scale_technique = pp.Scaler.STANDARDIZE) 
-
-class Model(Enum):
-    LINEAR = 0
-    POLYNOMIAL = 1
-    MLP = 2
+split_data = o.validate_pipeline(20, 5000, 0, scale_technique = config.SCALE_TECHNIQUE) 
 
 def validate(split_data, model: Model):
 
@@ -29,7 +23,6 @@ def validate(split_data, model: Model):
             match model:
                 case Model.LINEAR:
                     trained_model = l.model.fit(x_train, y_train)
-                    predicted = trained_model.predict(x_validate)
 
                     scores.append(trained_model.score(x_validate, y_validate))
 
@@ -40,7 +33,7 @@ def validate(split_data, model: Model):
                     scores.append(trained_model.score(polynomial_x_validate, y_validate))
 
                 case Model.MLP:
-                    torch.manual_seed(config.SEED)
+                    torch.manual_seed(config.PYTORCH_SEED)
                     trained_model = mlp.train_mlp(x_train, y_train)
                     tensor_x_validate_data = from_np_to_tensor(x_validate)
                     predicted = trained_model(tensor_x_validate_data)
@@ -72,7 +65,7 @@ def validate(split_data, model: Model):
                 return trained_model.score(polynomial_x_validate, y_validate)
 
             case Model.MLP:
-                torch.manual_seed(config.SEED)
+                torch.manual_seed(config.PYTORCH_SEED)
                 trained_model = mlp.train_mlp(x_train, y_train)
                 tensor_x_validate_data = from_np_to_tensor(x_validate)
                 predicted = trained_model(tensor_x_validate_data)

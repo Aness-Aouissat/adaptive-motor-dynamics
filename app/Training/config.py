@@ -1,5 +1,8 @@
-#Pytorch seed
-SEED = 0
+import Data.preprocessing as pp
+
+#General configs
+PYTORCH_SEED = 0
+SCALE_TECHNIQUE = pp.Scalar.STANDARDIZE
 
 #MLP Training Hyperparameters
 EPOCHS = 1000
