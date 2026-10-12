@@ -1,9 +1,9 @@
 #include "types.hpp"
 #include "motor_parameters.hpp"
 
-static Electric_Param electric_param{1, 2, 3, 4, 5}; //TBD, filler for now
-static Mechanical_Param mechanical_param{1, 2, 3}; //TBD, filler for now
-static Thermal_Param thermal_param{1, 2, 3}; //TBD, filler for now
+static Electric_Param electric_param{1.2, 21.0, 0.01, 0.08, 0.00393}; 
+static Mechanical_Param mechanical_param{0.08, 0.002, 0.002}; 
+static Thermal_Param thermal_param{21.0, 1.5, 120.0}; 
 
 const Electric_Param& get_electric_params() {
     return electric_param;

@@ -5,7 +5,6 @@
 #include <random>
 
 static std::vector<std::vector<Transition>> dataset;
-//static std::vector<Transition> dataset_1, dataset_2, dataset_3, dataset_4;
 
 static Current_State current_state;
 
@@ -58,21 +57,26 @@ Transition generate_transition(
 }
 
 std::vector<std::vector<Transition>> generate_datasets(
-    int num_of_vectors,
-    int num_of_samples
+    int num_of_datasets,
+    int num_of_samples,
+    int seed
 ) {
-    std::random_device random;
-    std::mt19937 generator(random());
-    std::uniform_real_distribution<double> V_range(9, 13); //arbitrary values, will define later
-    std::uniform_real_distribution<double> load_torque_range(15, 20); //arbitrary values, will define later
+    std::mt19937 generator(seed);
+    std::uniform_real_distribution<double> V_range(5.0, 13.0); 
+    std::uniform_real_distribution<double> load_torque_range(0.05, 0.35); 
 
-    for(int i = 0; i < num_of_vectors; i++) {
+    for(int i = 0; i < num_of_datasets; i++) {
         int j = 0;
         std::vector<Transition> curr_dataset;
-        current_state = {0, 0, 21}; //arbitraty values, will define later
+        current_state = {0, 0, 21.0}; 
+
+        double random_V;
+        double random_load_torque;
         while(j < num_of_samples) {
-            double random_V = V_range(generator);
-            double random_load_torque = load_torque_range(generator);
+            if(j % 100 == 0){
+                random_V = V_range(generator);
+                random_load_torque = load_torque_range(generator);
+            }
             Input input = {random_V, random_load_torque};
             Transition transition = generate_transition(current_state, input);
             curr_dataset.push_back(transition);
