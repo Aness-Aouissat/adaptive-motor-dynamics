@@ -3,9 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-def to_tensor(array: np.ndarray) -> torch.Tensor:
+def from_np_to_tensor(array: np.ndarray) -> torch.Tensor:
     return torch.tensor(array, dtype = torch.float32)
 
+def from_tensor_to_np(tensor: torch.Tensor) -> np.ndarray:
+    return tensor.detach().cpu().numpy()
+    
 class MultiLayerPerceptron(nn.Module):
     def __init__(self, input_size: int, hidden_layers: list[int], output_size: int):
         super().__init__() 
