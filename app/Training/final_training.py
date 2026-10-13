@@ -39,16 +39,16 @@ def store(trained_model, model: Model, x_scaler: StandardScaler | MinMaxScaler, 
 
     match model:
         case Model.LINEAR:
-            model_path = curr_abs_path.parent.parent / "artifacts" / "models" / "Linear_Model.joblib"
+            model_path = curr_abs_path.parent.parent / "Saved" / "models" / "Linear_Model.joblib"
             joblib.dump(trained_model, model_path)
         case Model.POLYNOMIAL:
-            model_path = curr_abs_path.parent.parent / "artifacts" / "models" / "Polynomial_Model.joblib"
+            model_path = curr_abs_path.parent.parent / "Saved" / "models" / "Polynomial_Model.joblib"
             joblib.dump(trained_model, model_path)
         case Model.MLP:
-            model_path = curr_abs_path.parent.parent / "artifacts" / "models" / "MLP_Weights.pth"
+            model_path = curr_abs_path.parent.parent / "Saved" / "models" / "MLP_Weights.pth"
             torch.save(trained_model.state_dict(), model_path)
 
-    scalers_path = curr_abs_path.parent.parent / "artifacts" / "scalers"
+    scalers_path = curr_abs_path.parent.parent / "Saved" / "scalers"
     joblib.dump(x_scaler, scalers_path / "x_scaler.joblib")
     joblib.dump(y_scaler, scalers_path / "y_scaler.joblib")
 
