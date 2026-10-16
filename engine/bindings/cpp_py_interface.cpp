@@ -12,25 +12,30 @@ namespace py = pybind11;
 PYBIND11_MODULE(cpp_py_interface, m) {
 
     py::class_<Current_State>(m, "Current_State")
+        .def(py::init<double, double, double>())
         .def_readonly("curr_i", &Current_State::curr_i)
         .def_readonly("curr_omega", &Current_State::curr_omega)
         .def_readonly("curr_T", &Current_State::curr_T);
 
-    py::class_<Input>(m, "Input")   
+    py::class_<Input>(m, "Input")
+        .def(py::init<double, double>())   
         .def_readonly("V", &Input::V)
         .def_readonly("load_torque", &Input::load_torque);
 
     py::class_<New_State>(m, "New_State")
+        .def(py::init<double, double, double>())
         .def_readonly("new_i", &New_State::new_i)
         .def_readonly("new_omega", &New_State::new_omega)
         .def_readonly("new_T", &New_State::new_T);
     
     py::class_<Transition>(m, "Transition")
+        .def(py::init<>())
         .def_readonly("current_state", &Transition::current_state)
         .def_readonly("input", &Transition::input)
         .def_readonly("new_state", &Transition::new_state);
 
     m.def("generate_datasets", &generate_datasets, py::return_value_policy::move);
+    m.def("generate_transition", &generate_transition, py::return_value_policy::move);
 
     py::native_enum<electric_fields>(m, "electric_fields", "enum.Enum")
         .value("R_0", electric_fields::R_0)
