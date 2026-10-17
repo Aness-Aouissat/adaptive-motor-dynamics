@@ -1,4 +1,5 @@
 import Data.orchestration as o
+import Data.preprocessing as pp
 import Models.linear as l
 import Models.polynomial as p
 import Training.mlp_training as mlp
@@ -33,7 +34,10 @@ def test(trained_model, model_type: Model, x_test, y_test):
         case _:
             return 
 
-def store(trained_model, model: Model, x_scaler: StandardScaler | MinMaxScaler, y_scaler: StandardScaler | MinMaxScaler):
+def store_model(
+        trained_model, 
+        model: Model, 
+    ):
 
     curr_abs_path = Path(__file__).resolve()
 
@@ -48,15 +52,33 @@ def store(trained_model, model: Model, x_scaler: StandardScaler | MinMaxScaler, 
             model_path = curr_abs_path.parent.parent / "Saved" / "models" / "MLP_Weights.pth"
             torch.save(trained_model.state_dict(), model_path)
 
+def store_scalers(
+    x_scaler: StandardScaler | MinMaxScaler, 
+    y_scaler: StandardScaler | MinMaxScaler
+):
+    curr_abs_path = Path(__file__).resolve()
+    
     scalers_path = curr_abs_path.parent.parent / "Saved" / "scalers"
     joblib.dump(x_scaler, scalers_path / "x_scaler.joblib")
     joblib.dump(y_scaler, scalers_path / "y_scaler.joblib")
 
-def final_train_pipeline(split_data, model: Model):
+def final_train_pipeline(
+        split_data, 
+        model: Model, 
+    ):
 
     x_train, y_train = split_data[0], split_data[1]
     x_test, y_test = split_data[2], split_data[3]
-    x_scaler, y_scaler = split_data[4], split_data[5]
+
+    x_scaler = None
+    y_scaler = None
+
+    if len(split_data) == 6:
+        x_scaler, y_scaler = split_data[4], split_data[5]
+    elif len(split_data) == 4:
+        pass
+    else:
+        raise ValueError("Unexpected data pipeline output.")
 
     match model:
         case Model.LINEAR:
@@ -66,10 +88,12 @@ def final_train_pipeline(split_data, model: Model):
             decision = input("Store final Linear model? (y/n): ")
             
             if decision.lower() == "y":
-                store(trained_model, Model.LINEAR, x_scaler, y_scaler)
+                store_model(trained_model, Model.LINEAR)
+                if x_scaler is not None and y_scaler is not None:
+                    store_scalers(x_scaler, y_scaler)
             else:
                 print("Model rejected. No files were saved.")
-        
+    
         case Model.POLYNOMIAL:
             polynomial_x_train = p.to_polynomial(x_train)
             trained_model = p.model.fit(polynomial_x_train, y_train) 
@@ -78,7 +102,9 @@ def final_train_pipeline(split_data, model: Model):
             decision = input("Store final Polynomial model? (y/n): ")
 
             if decision.lower() == "y":
-                store(trained_model, Model.POLYNOMIAL, x_scaler, y_scaler)
+                store_model(trained_model, Model.POLYNOMIAL)
+                if x_scaler is not None and y_scaler is not None:
+                    store_scalers(x_scaler, y_scaler)
             else:
                 print("Model rejected. No files were saved.")
 
@@ -90,7 +116,9 @@ def final_train_pipeline(split_data, model: Model):
             decision = input("Store final MLP model? (y/n): ")
             
             if decision.lower() == "y":
-                store(trained_model, Model.MLP, x_scaler, y_scaler)
+                store_model(trained_model, Model.MLP)
+                if x_scaler is not None and y_scaler is not None:
+                    store_scalers(x_scaler, y_scaler)
             else:
                 print("Model rejected. No files were saved.")
 
