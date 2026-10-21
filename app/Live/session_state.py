@@ -13,11 +13,10 @@ class SessionState:
         self, 
         model_type: Model,
         current_state,
-        current_input,
         seed: int,     
     ): 
         self.current_state = current_state
-        self.current_input = current_input
+        self.current_input = None
         self.model_type = model_type
         self.seed = seed
         self.rng = Random(self.seed)
