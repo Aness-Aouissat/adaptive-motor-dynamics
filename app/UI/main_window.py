@@ -1,4 +1,9 @@
-from PySide6.QtCore import Qt
+from Live.session_state import SessionState
+from Live.loaded_model import LoadedModel
+from Live.session_runner import step
+from Training.model_type import Model
+from cpp_py_interface import Current_State
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -121,6 +126,20 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.central)
 
+        self.session_state = None
+        self.loaded_model = None
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(50)
+        self.timer.timeout.connect(self.advance_simulation)
+
+        self.start_button.clicked.connect(self.start_simulation)
+        self.pause_button.clicked.connect(self.pause_simulation)
+        self.resume_button.clicked.connect(self.resume_simulation)
+        self.end_button.clicked.connect(self.end_simulation)
+
+        self.start_button.setEnabled(True)
+
     def make_placeholder(self, text):
 
         label = QLabel(text)
@@ -129,3 +148,69 @@ class MainWindow(QMainWindow):
         label.setStyleSheet("border: 1px solid #777;" "background: #283342;" "color: white;")
 
         return label
+
+    def start_simulation(self):
+        current_state = Current_State(0, 0, 21.0)
+        model_type = Model[self.model_selector.currentText().upper()]
+        seed = self.seed_input.value()
+
+        self.session_state = SessionState(model_type, current_state, seed)
+        self.loaded_model = LoadedModel(model_type)
+
+        self.loaded_model.load_model()
+
+        self.start_button.setEnabled(False)
+        self.pause_button.setEnabled(True)
+        self.resume_button.setEnabled(False)
+        self.end_button.setEnabled(True)
+
+        self.timer.start()
+        self.status_label.setText("Status: Running")
+
+    def advance_simulation(self):
+        model_input, model_target, prediction, residual = step(self.session_state, self.loaded_model)
+
+        count = self.session_state.step_count
+
+        self.step_label.setText(f"Step: {count}")
+        self.time_label.setText(f"Simulation Time: {count * 0.001:.3f} s")
+
+    def pause_simulation(self):
+
+        self.timer.stop()
+
+        self.start_button.setEnabled(False)
+        self.pause_button.setEnabled(False)
+        self.resume_button.setEnabled(True)
+        self.end_button.setEnabled(True)
+
+        self.status_label.setText("Status: Paused")
+
+    def resume_simulation(self):
+
+        self.start_button.setEnabled(False)
+        self.pause_button.setEnabled(True)
+        self.resume_button.setEnabled(False)
+        self.end_button.setEnabled(True)
+
+        self.timer.start()
+        self.status_label.setText("Status: Running")
+        
+    def end_simulation(self):
+
+        self.timer.stop()
+
+        self.start_button.setEnabled(True)
+        self.pause_button.setEnabled(False)
+        self.resume_button.setEnabled(False)
+        self.end_button.setEnabled(False)
+
+        self.session_state = None
+        self.loaded_model = None
+
+        self.status_label.setText("Status: Not Started")
+        self.step_label.setText("Step: 0")
+        self.time_label.setText("Simulation Time: 0.000 s")
+
+        self.model_selector.setEnabled(True)
+        self.seed_input.setEnabled(True)
