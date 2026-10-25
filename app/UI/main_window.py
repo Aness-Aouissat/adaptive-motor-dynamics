@@ -1,3 +1,4 @@
+from UI.plots import create_plots, update_plots
 from Live.session_state import SessionState
 from Live.loaded_model import LoadedModel
 from Live.session_runner import step
@@ -16,8 +17,8 @@ from PySide6.QtWidgets import (
     QComboBox,
     QSpinBox,
 )
+import numpy as np
 
-# QMainWindow inherits from QWidget, providing window functionality.
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -79,28 +80,8 @@ class MainWindow(QMainWindow):
 
         performance_page = QWidget()
 
-        performance_layout = QVBoxLayout()
-        performance_page.setLayout(performance_layout)
-
-        performance_layout.addWidget(QLabel("Horizontal Axis"))
-
-        self.x_axis_selector = QComboBox()
-        self.x_axis_selector.addItems(["Simulation time", "Voltage", "Load torque", "Motor speed", "Temperature",])
-        self.x_axis_selector.setEnabled(False)
-        performance_layout.addWidget(self.x_axis_selector)
-
         performance_grid = QGridLayout()
-        performance_layout.addLayout(performance_grid)
-
-        variables = ["Current Δi", "Angular Velocity Δω", "Temperature ΔT",]
-
-        for row, variable in enumerate(variables):
-
-            actual_plot = self.make_placeholder(f"{variable}: Actual vs Predicted")
-            residual_plot = self.make_placeholder(f"{variable}: Residual")
-
-            performance_grid.addWidget(actual_plot, row, 0)
-            performance_grid.addWidget(residual_plot, row, 1)
+        performance_page.setLayout(performance_grid)
 
         self.tabs.addTab(performance_page, "Model Performance")
 
@@ -109,15 +90,7 @@ class MainWindow(QMainWindow):
         monitoring_layout = QGridLayout()
         monitoring_page.setLayout(monitoring_layout)
 
-        monitoring_variables = ["Voltage", "Load Torque", "Motor Current", "Motor Speed", "Temperature",]
-
-        for index, variable in enumerate(monitoring_variables):
-
-            placeholder = self.make_placeholder(variable)
-            row = index // 2
-            column = index % 2
-
-            monitoring_layout.addWidget(placeholder, row, column)
+        self.plot_curves = create_plots(performance_grid, monitoring_layout)
 
         self.tabs.addTab(monitoring_page, "Motor Monitoring")
 
@@ -128,6 +101,7 @@ class MainWindow(QMainWindow):
 
         self.session_state = None
         self.loaded_model = None
+        self.plot_history = []
 
         self.timer = QTimer(self)
         self.timer.setInterval(50)
@@ -149,6 +123,9 @@ class MainWindow(QMainWindow):
 
         return label
 
+    def redraw_plots(self):
+        update_plots(self.plot_curves, self.plot_history)
+
     def start_simulation(self):
         current_state = Current_State(0, 0, 21.0)
         model_type = Model[self.model_selector.currentText().upper()]
@@ -158,6 +135,8 @@ class MainWindow(QMainWindow):
         self.loaded_model = LoadedModel(model_type)
 
         self.loaded_model.load_model()
+        self.plot_history.clear()
+        self.redraw_plots()
 
         self.start_button.setEnabled(False)
         self.pause_button.setEnabled(True)
@@ -175,9 +154,25 @@ class MainWindow(QMainWindow):
         self.step_label.setText(f"Step: {count}")
         self.time_label.setText(f"Simulation Time: {count * 0.001:.3f} s")
 
+        self.plot_history.append(np.concatenate((
+            [(count - 1) * 0.001],
+            model_input.ravel(),
+            model_target.ravel(),
+            prediction.ravel(),
+            residual.ravel()
+        )))
+
+        if len(self.plot_history) > 2000:
+            self.plot_history.pop(0)
+
+        if count % 10 == 0:
+            self.redraw_plots()
+
     def pause_simulation(self):
 
         self.timer.stop()
+
+        self.redraw_plots()
 
         self.start_button.setEnabled(False)
         self.pause_button.setEnabled(False)
@@ -199,6 +194,8 @@ class MainWindow(QMainWindow):
     def end_simulation(self):
 
         self.timer.stop()
+        self.plot_history.clear()
+        self.redraw_plots()
 
         self.start_button.setEnabled(True)
         self.pause_button.setEnabled(False)
