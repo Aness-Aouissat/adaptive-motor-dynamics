@@ -3,7 +3,7 @@ from Live.session_state import SessionState
 from Live.loaded_model import LoadedModel
 from Live.session_runner import step
 from Training.model_type import Model
-from cpp_py_interface import Current_State
+from cpp_py_interface import Current_State, reset_mutations
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -130,6 +130,7 @@ class MainWindow(QMainWindow):
         current_state = Current_State(0, 0, 21.0)
         model_type = Model[self.model_selector.currentText().upper()]
         seed = self.seed_input.value()
+        reset_mutations()
 
         self.session_state = SessionState(model_type, current_state, seed)
         self.loaded_model = LoadedModel(model_type)
@@ -196,6 +197,7 @@ class MainWindow(QMainWindow):
         self.timer.stop()
         self.plot_history.clear()
         self.redraw_plots()
+        reset_mutations()
 
         self.start_button.setEnabled(True)
         self.pause_button.setEnabled(False)
