@@ -17,7 +17,7 @@ def validation_split(train_data: list[tuple[np.ndarray, np.ndarray]], validation
         case Strategy.GROUP_K_FOLD:
             folds = []
             kf = KFold(n_splits = splits, shuffle = True, random_state = seed)
-            for train_index, validate_index in kf.split(train_data): # (np.ndarray of training set indices, np.ndarray of validation set indices)
+            for train_index, validate_index in kf.split(train_data): 
                 x_y_train = []
                 for index in train_index:
                     x_y_train.append(train_data[index])

@@ -1,8 +1,7 @@
 from Data.preprocessing import to_np_arrays, generate_model_inputs, generate_model_targets
 from Data.transition_conversion import convert_transition
-from Models.linear import LinearRegression
 from Models.polynomial import to_polynomial
-from Models.mlp import MultiLayerPerceptron, from_np_to_tensor, from_tensor_to_np
+from Models.mlp import from_np_to_tensor, from_tensor_to_np
 from Live.session_state import SessionState
 from Live.loaded_model import LoadedModel
 from Live.mutation import mutate

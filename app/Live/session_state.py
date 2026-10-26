@@ -1,18 +1,13 @@
 from Training.model_type import Model
-from enum import Enum
 from random import Random
 
-class SessionStatus(Enum):
-    NOT_STARTED = 0
-    RUNNING = 1
-    PAUSED = 2
-    EXIT = 3
+import cpp_py_interface as cpi
 
 class SessionState:
     def __init__(
         self, 
         model_type: Model,
-        current_state,
+        current_state: cpi.Current_State,
         seed: int,     
     ): 
         self.current_state = current_state
