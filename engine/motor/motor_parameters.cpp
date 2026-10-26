@@ -79,3 +79,9 @@ void mutate_thermal_fields(const Request& request) {
         }
     }
 }
+
+void reset_mutations() {
+    electric_param = {1.2, 21.0, 0.01, 0.08, 0.00393};
+    mechanical_param = {0.08, 0.002, 0.002};
+    thermal_param = {21.0, 1.5, 120.0};
+}

@@ -2,6 +2,7 @@
 #include "simulation_types.hpp"
 #include "generate_data.hpp"
 #include "types.hpp"
+#include <unordered_map>
 
 #include <pybind11/pybind11.h>
 #include <pybind11/native_enum.h>
@@ -58,7 +59,11 @@ PYBIND11_MODULE(cpp_py_interface, m) {
         .finalize();
 
     py::class_<Request>(m, "Request", py::dynamic_attr())
-        .def(py::init<>())
+        .def(py::init<
+            std::unordered_map<electric_fields, double>, 
+            std::unordered_map<mechanical_fields, double>, 
+            std::unordered_map<thermal_fields, double>
+        >())
         .def_readwrite("electric_map", &Request::electric_map)
         .def_readwrite("mechanical_map", &Request::mechanical_map)
         .def_readwrite("thermal_map", &Request::thermal_map);
@@ -66,4 +71,5 @@ PYBIND11_MODULE(cpp_py_interface, m) {
     m.def("mutate_electric_fields", &mutate_electric_fields);
     m.def("mutate_mechanical_fields", &mutate_mechanical_fields);
     m.def("mutate_thermal_fields", &mutate_thermal_fields);
+    m.def("reset_mutations", &reset_mutations);
 }

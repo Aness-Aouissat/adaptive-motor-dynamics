@@ -31,6 +31,7 @@ struct Request{
 void mutate_electric_fields(const Request&);
 void mutate_mechanical_fields(const Request&);
 void mutate_thermal_fields(const Request&);
+void reset_mutations();
 
 const Electric_Param& get_electric_params();
 const Mechanical_Param& get_mechanical_params();
