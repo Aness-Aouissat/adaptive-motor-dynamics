@@ -1,6 +1,7 @@
 from UI.plots import create_plots, update_plots
-from Live.session_state import SessionState
+from Live.session_state import SessionState, SessionPhase
 from Live.loaded_model import LoadedModel
+from Live.drift import DriftManager
 from Live.session_runner import step
 from Training.model_type import Model
 from cpp_py_interface import Current_State, reset_mutations
@@ -78,6 +79,22 @@ class MainWindow(QMainWindow):
 
         self.tabs = QTabWidget()
 
+        self.drift_alarm = QLabel("●  IDLE")
+        self.drift_alarm.setAlignment(Qt.AlignCenter)
+        self.drift_alarm.setMinimumWidth(190)
+        self.drift_alarm.setFixedHeight(30)
+
+        self.tabs.setCornerWidget(self.drift_alarm, Qt.TopRightCorner)
+
+        self.alarm_phase = None
+        self.alarm_flash_on = False
+
+        self.alarm_timer = QTimer(self)
+        self.alarm_timer.setInterval(450)
+        self.alarm_timer.timeout.connect(self.flash_drift_alarm)
+
+        self.set_alarm_style("#263238", "#B0BEC5")
+
         performance_page = QWidget()
 
         performance_grid = QGridLayout()
@@ -126,6 +143,52 @@ class MainWindow(QMainWindow):
     def redraw_plots(self):
         update_plots(self.plot_curves, self.plot_history)
 
+    def set_alarm_style(self, background, foreground):
+        self.drift_alarm.setStyleSheet(f"""
+        QLabel {{
+            background-color: {background};
+            color: {foreground};
+            border-radius: 7px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            }}
+        """)
+
+    def flash_drift_alarm(self):
+        self.alarm_flash_on = not self.alarm_flash_on
+
+        if self.alarm_flash_on:
+            self.set_alarm_style("#DC2626", "#FFFFFF")
+        else:
+            self.set_alarm_style("#450A0A", "#FCA5A5")
+
+    def update_drift_alarm(self):
+        if self.session_state is None:
+            self.alarm_phase = None
+            self.alarm_timer.stop()
+            self.drift_alarm.setText("● IDLE")
+            self.set_alarm_style("#263238", "#B0BEC5")
+            return
+
+        if self.session_state.drift_status == self.alarm_phase:
+            return
+
+        self.alarm_phase = self.session_state.drift_status
+        self.alarm_timer.stop()
+
+        if self.alarm_phase == SessionPhase.ADAPTING:
+            self.drift_alarm.setText("⚠ DRIFT DETECTED")
+            self.alarm_flash_on = False
+            self.flash_drift_alarm()
+            self.alarm_timer.start()
+        elif self.alarm_phase == SessionPhase.STABLE:
+            self.drift_alarm.setText("● STABLE")
+            self.set_alarm_style("#14532D", "#BBF7D0")
+        elif self.alarm_phase == SessionPhase.BASELINE:
+            self.drift_alarm.setText("● MONITORING")
+            self.set_alarm_style("#1E3A5F", "#BFDBFE")
+
     def start_simulation(self):
         current_state = Current_State(0, 0, 21.0)
         model_type = Model[self.model_selector.currentText().upper()]
@@ -134,8 +197,13 @@ class MainWindow(QMainWindow):
 
         self.session_state = SessionState(model_type, current_state, seed)
         self.loaded_model = LoadedModel(model_type)
-
         self.loaded_model.load_model()
+        
+        self.drift_detector = DriftManager(self.session_state, self.loaded_model)
+        self.drift_detector.get_initial_CUSUM_reference_values()
+
+        self.update_drift_alarm()
+
         self.plot_history.clear()
         self.redraw_plots()
 
@@ -150,8 +218,16 @@ class MainWindow(QMainWindow):
     def advance_simulation(self):
         model_input, model_target, prediction, residual = step(self.session_state, self.loaded_model)
 
-        count = self.session_state.step_count
+        self.drift_detector.sliding_window.append(residual)
+        self.drift_detector.maintain_sliding_window()
 
+        self.drift_detector.update_drift_status()
+        self.update_drift_alarm()
+
+        #if statement checking if adapting and if adaptation worker is working (in adaptation class)
+
+        count = self.session_state.step_count
+ 
         self.step_label.setText(f"Step: {count}")
         self.time_label.setText(f"Simulation Time: {count * 0.001:.3f} s")
 
@@ -205,6 +281,7 @@ class MainWindow(QMainWindow):
         self.end_button.setEnabled(False)
 
         self.session_state = None
+        self.update_drift_alarm()
         self.loaded_model = None
 
         self.status_label.setText("Status: Not Started")
