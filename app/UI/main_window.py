@@ -2,6 +2,7 @@ from UI.plots import create_plots, update_plots
 from Live.session_state import SessionState, SessionPhase
 from Live.loaded_model import LoadedModel
 from Live.drift import DriftManager
+from Live.online_adapter import OnlineAdapter
 from Live.session_runner import step
 from Training.model_type import Model
 from cpp_py_interface import Current_State, reset_mutations
@@ -199,8 +200,10 @@ class MainWindow(QMainWindow):
         self.loaded_model = LoadedModel(model_type)
         self.loaded_model.load_model()
         
-        self.drift_detector = DriftManager(self.session_state, self.loaded_model)
-        self.drift_detector.get_initial_CUSUM_reference_values()
+        self.drift_manager = DriftManager(self.session_state, self.loaded_model)
+        self.drift_manager.get_initial_CUSUM_reference_values()
+
+        self.online_adapter = OnlineAdapter(self.drift_manager)
 
         self.update_drift_alarm()
 
@@ -217,14 +220,19 @@ class MainWindow(QMainWindow):
 
     def advance_simulation(self):
         model_input, model_target, prediction, residual = step(self.session_state, self.loaded_model)
+        
+        self.drift_manager.sliding_window.append(residual)
+        self.drift_manager.maintain_sliding_window()
 
-        self.drift_detector.sliding_window.append(residual)
-        self.drift_detector.maintain_sliding_window()
-
-        self.drift_detector.update_drift_status()
+        self.drift_manager.update_drift_status()
         self.update_drift_alarm()
 
-        #if statement checking if adapting and if adaptation worker is working (in adaptation class)
+        if self.online_adapter.currently_working:
+            if self.online_adapter.worker is None:
+                #create worker and launch once
+                pass
+        else:
+            self.online_adapter.maintain_adaption(model_input, model_target)
 
         count = self.session_state.step_count
  

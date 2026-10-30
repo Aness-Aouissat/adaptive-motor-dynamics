@@ -60,10 +60,6 @@ def step(session_state: SessionState, loaded_model: LoadedModel):
     if session_state.step_count % 100 == 0:
         session_state.current_input = cpi.Input(session_state.rng.uniform(5, 13), session_state.rng.uniform(0.05, 0.35))
 
-    if session_state.step_count > 0 and session_state.step_count % 1000 == 0:
-        cpi.reset_mutations()
-        mutate(session_state.rng)
-
     model_input, model_target = prepare_transition(session_state.current_state, session_state.current_input)
 
     prediction = inference(model_input, loaded_model)
