@@ -2,7 +2,7 @@ from Data.preprocessing import to_np_arrays, generate_model_inputs, generate_mod
 from Data.transition_conversion import convert_transition
 from Models.polynomial import to_polynomial
 from Models.mlp import from_np_to_tensor, from_tensor_to_np
-from Live.session_state import SessionState
+from Live.session_state import SessionState, SessionPhase
 from Live.loaded_model import LoadedModel
 from Live.mutation import mutate
 from Training.model_type import Model
@@ -55,7 +55,20 @@ def inference(model_input: np.ndarray, loaded_model: LoadedModel) -> np.ndarray:
                 tensor_prediction = loaded_model.loaded_model(tensor_input)
                 return from_tensor_to_np(tensor_prediction)
 
-def step(session_state: SessionState, loaded_model: LoadedModel): 
+def step(session_state: SessionState, loaded_model: LoadedModel, schedule_mutations = False): 
+    if session_state.step_count == 0:
+        cpi.reset_mutations()
+
+    if schedule_mutations:
+        if session_state.step_count == 500 and session_state.drift_status == SessionPhase.BASELINE:
+            mutate(session_state.rng)
+        if session_state.drift_status == SessionPhase.STABLE:
+            if session_state.stable_step_counter == 700:
+                cpi.reset_mutations()
+                mutate(session_state.rng)
+                session_state.stable_step_counter = 0
+            else:
+                session_state.stable_step_counter += 1
 
     if session_state.step_count % 100 == 0:
         session_state.current_input = cpi.Input(session_state.rng.uniform(5, 13), session_state.rng.uniform(0.05, 0.35))

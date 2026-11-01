@@ -17,6 +17,7 @@ class DriftManager:
         self.session_state = session_state
         self.loaded_model = loaded_model
         self.sliding_window = deque()
+        self.cusum_window = deque(maxlen = 100)
         self.reference_mean = None
         self.reference_K = None
         self.threshold = None
@@ -51,7 +52,18 @@ class DriftManager:
         self.CUSUM_calculation(abs_current_residual)
 
     def CUSUM_calculation(self, abs_current_residual):
-        self.current_CUSUM = np.maximum(0, self.current_CUSUM + abs_current_residual - self.reference_mean - self.reference_K)
+        residual = abs_current_residual.reshape(3)
+        excess = residual - self.reference_mean - self.reference_K
+
+        self.cusum_window.append(excess)
+
+        running_sum = np.zeros(3)
+        maximum_CUSUM = np.zeros(3)
+        for value in list(self.cusum_window)[::-1]:
+            running_sum += value
+            maximum_CUSUM = np.maximum(maximum_CUSUM, running_sum)
+
+        self.current_CUSUM = maximum_CUSUM
 
     def drift_detector(self):
         if self.session_state.drift_status != SessionPhase.ADAPTING:

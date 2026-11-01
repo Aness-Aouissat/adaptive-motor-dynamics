@@ -23,3 +23,4 @@ class SessionState:
         self.rng = Random(self.seed)
         self.step_count = 0
         self.drift_status = SessionPhase.BASELINE
+        self.stable_step_counter = 0
