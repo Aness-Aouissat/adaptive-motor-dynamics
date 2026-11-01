@@ -4,9 +4,10 @@ from Live.loaded_model import LoadedModel
 from Live.drift import DriftManager
 from Live.online_adapter import OnlineAdapter
 from Live.session_runner import step
+from Live.config import EVALUATION_BATCH_SIZE
 from Training.model_type import Model
 from cpp_py_interface import Current_State, reset_mutations
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QThreadPool
 from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
@@ -132,6 +133,9 @@ class MainWindow(QMainWindow):
 
         self.start_button.setEnabled(True)
 
+        self.threadpool = QThreadPool()
+        self.threadpool.setMaxThreadCount(1)
+
     def make_placeholder(self, text):
 
         label = QLabel(text)
@@ -220,19 +224,20 @@ class MainWindow(QMainWindow):
 
     def advance_simulation(self):
         model_input, model_target, prediction, residual = step(self.session_state, self.loaded_model)
-        
+
         self.drift_manager.sliding_window.append(residual)
         self.drift_manager.maintain_sliding_window()
 
         self.drift_manager.update_drift_status()
         self.update_drift_alarm()
 
-        if self.online_adapter.currently_working:
-            if self.online_adapter.worker is None:
-                #create worker and launch once
-                pass
-        else:
-            self.online_adapter.maintain_adaption(model_input, model_target)
+        if self.drift_manager.session_state.drift_status == SessionPhase.ADAPTING:
+            if self.threadpool.activeThreadCount() == 0:
+                if self.online_adapter.currently_learning or (self.online_adapter.currently_evaluating and self.online_adapter.evaluation_batch_count == EVALUATION_BATCH_SIZE):
+                    adapter = self.online_adapter
+                    self.threadpool.start(lambda: adapter.maintain_adaption(None, None))
+                else:
+                    self.online_adapter.maintain_adaption(model_input, model_target)
 
         count = self.session_state.step_count
  
@@ -279,6 +284,7 @@ class MainWindow(QMainWindow):
     def end_simulation(self):
 
         self.timer.stop()
+        self.threadpool.waitForDone()
         self.plot_history.clear()
         self.redraw_plots()
         reset_mutations()
