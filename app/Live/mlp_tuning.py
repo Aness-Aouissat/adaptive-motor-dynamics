@@ -1,7 +1,7 @@
 from Training.config import HIDDEN_LAYERS
 from Training.model_type import Model
 from Live.mutation import mutate
-from Live.config import PYTORCH_SEED, LEARNING_RATE, BATCH_SIZE, SEED, EPOCHS_PER_BATCH
+from Live.config import PYTORCH_SEED, LEARNING_RATE, LEARNING_BATCH_SIZE, SEED, EPOCHS_PER_BATCH
 from Live.loaded_model import LoadedModel
 from Live.session_runner import step
 from Live.session_state import SessionState
@@ -83,7 +83,7 @@ def mlp_validation_loop(num_of_samples, learning_rate, batch_size, steps_per_bat
     return np.asarray(errors)
 
 def mlp_test_loop(num_of_samples, test_seed):
-    return mlp_validation_loop(num_of_samples, LEARNING_RATE, BATCH_SIZE, EPOCHS_PER_BATCH, test_seed)
+    return mlp_validation_loop(num_of_samples, LEARNING_RATE, LEARNING_BATCH_SIZE, EPOCHS_PER_BATCH, test_seed)
 
 def mlp_train_loop(x_train, y_train, loaded_model, optimizer, epochs = 1):
     loaded_model.train()
