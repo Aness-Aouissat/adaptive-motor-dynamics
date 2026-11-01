@@ -48,6 +48,9 @@ class DriftManager:
     def CUSUM(self):
         current_residual = self.sliding_window[len(self.sliding_window) - 1]
         abs_current_residual = np.abs(current_residual)
+        self.CUSUM_calculation(abs_current_residual)
+
+    def CUSUM_calculation(self, abs_current_residual):
         self.current_CUSUM = np.maximum(0, self.current_CUSUM + abs_current_residual - self.reference_mean - self.reference_K)
 
     def drift_detector(self):
