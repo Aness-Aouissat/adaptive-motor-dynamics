@@ -101,7 +101,7 @@ class OnlineAdapter:
         self.currently_evaluating = True
 
     def evaluate_model(self):
-        pre_drift_MAE = self.drift_manager.reference_mean
+        pre_drift_MAE = self.drift_manager.cusum_reference_mean
 
         prediction = inference(self.x_evaluating_data, self.drift_manager.loaded_model)
         residuals = self.y_evaluating_data - prediction
@@ -125,35 +125,39 @@ class OnlineAdapter:
     def get_new_CUSUM_reference_values(self, residuals):
         std_dev = np.std(np.abs(residuals), axis = 0)
 
-        self.drift_manager.reference_K = std_dev / 2
-        self.drift_manager.reference_mean = np.mean(np.abs(residuals), axis = 0)
+        self.drift_manager.cusum_reference_K = std_dev / 2
+        self.drift_manager.cusum_reference_mean = np.mean(np.abs(residuals), axis = 0)
         self.drift_manager.cusum_window.clear()
         self.drift_manager.current_CUSUM = np.zeros(3)
         match self.drift_manager.loaded_model.model_type:
             case Model.LINEAR:
-                self.drift_manager.threshold = np.array([0.2216, 1e-12, 0.04])
-            case Model.POLYNOMIAL:
-                self.drift_manager.threshold = np.array([1, 2, 0.001526])
+                self.drift_manager.cusum_threshold = np.array([0.2216, 1e-12, 0.04])
             case Model.MLP:
-                self.drift_manager.threshold = np.array([26.58, 3.03, 0.0184])
+                self.drift_manager.cusum_threshold = np.array([26.58, 3.03, 0.0184])
 
         if self.drift_manager.loaded_model.model_type == Model.LINEAR:
-            self.drift_manager.threshold[1] = max(self.drift_manager.threshold[1], 1e-7)
+            self.drift_manager.cusum_threshold[1] = max(self.drift_manager.cusum_threshold[1], 1e-7)
+
+        if self.drift_manager.loaded_model.model_type == Model.POLYNOMIAL:
+            self.drift_manager.reset_page_hinkley()
 
         self.reset()
         self.drift_manager.session_state.stable_step_counter = 0
-        self.drift_manager.session_state.drift_status = SessionPhase.STABLE
+        self.drift_manager.session_state.drift_status = SessionPhase.STABLE        
 
     def reset(self):
         self.replay_buffer.clear()
+
         self.x_learning_data = np.empty((LEARNING_BATCH_SIZE, 5))
         self.y_learning_data = np.empty((LEARNING_BATCH_SIZE, 3))
         self.learning_batch_count = 0
         if self.drift_manager.loaded_model.model_type == Model.MLP:
             self.training_model = copy.deepcopy(self.drift_manager.loaded_model.loaded_model)
             self.optimizer = torch.optim.Adam(self.training_model.parameters(), lr = LEARNING_RATE)
+
         self.x_evaluating_data = np.empty((EVALUATION_BATCH_SIZE, 5))
         self.y_evaluating_data = np.empty((EVALUATION_BATCH_SIZE, 3))
         self.evaluation_batch_count = 0
+
         self.currently_learning = False
         self.currently_evaluating = False

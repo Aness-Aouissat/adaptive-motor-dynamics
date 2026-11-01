@@ -242,7 +242,7 @@ class MainWindow(QMainWindow):
         if phase == SessionPhase.ADAPTING:
             self.awaiting_post_mutation_detection = False
             self.last_drift_step = self.session_state.step_count
-            self.add_event("CUSUM drift detected; online adaptation started")
+            self.add_event("Drift detected; online adaptation started")
             self.drift_alarm.setText("⚠ DRIFT DETECTED")
             self.set_alarm_style("#DC2626", "#FFFFFF")
             self.alarm_timer.start()
