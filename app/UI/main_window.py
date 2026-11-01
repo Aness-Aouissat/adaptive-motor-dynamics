@@ -4,7 +4,7 @@ from Live.loaded_model import LoadedModel
 from Live.drift import DriftManager
 from Live.online_adapter import OnlineAdapter
 from Live.session_runner import step
-from Live.config import EVALUATION_BATCH_SIZE
+from Live.config import EVALUATION_BATCH_SIZE, LEARNING_BATCH_SIZE
 from Training.model_type import Model
 from cpp_py_interface import Current_State, reset_mutations
 from PySide6.QtCore import Qt, QTimer, QThreadPool
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QComboBox,
     QSpinBox,
+    QPlainTextEdit
 )
 import numpy as np
 
@@ -44,13 +45,14 @@ class MainWindow(QMainWindow):
         self.model_selector = QComboBox()
 
         self.model_selector.addItems(["Linear", "Polynomial", "MLP",])
+        self.model_selector.setCurrentText("MLP")  
         self.sidebar_layout.addWidget(self.model_selector)
         self.sidebar_layout.addWidget(QLabel("Random Seed"))
 
         self.seed_input = QSpinBox()
 
         self.seed_input.setRange(0, 1000000)
-        self.seed_input.setValue(42)
+        self.seed_input.setValue(10)
 
         self.sidebar_layout.addWidget(self.seed_input)
 
@@ -72,10 +74,23 @@ class MainWindow(QMainWindow):
         self.status_label = QLabel("Status: Not Started")
         self.step_label = QLabel("Step: 0")
         self.time_label = QLabel("Simulation Time: 0.000 s")
+        self.stage_label = QLabel("Phase: Idle")
+        self.stage_label.setWordWrap(True)
+        self.speed_label = QLabel("Playback: —")
 
         self.sidebar_layout.addWidget(self.status_label)
         self.sidebar_layout.addWidget(self.step_label)
         self.sidebar_layout.addWidget(self.time_label)
+        self.sidebar_layout.addWidget(self.stage_label)
+        self.sidebar_layout.addWidget(self.speed_label)
+
+        self.sidebar_layout.addWidget(QLabel("System Events"))
+        self.event_history = QPlainTextEdit()
+        self.event_history.setReadOnly(True)
+        self.event_history.setPlaceholderText("Motor changes, drift and recovery will appear here.")
+        self.event_history.setMaximumBlockCount(300)
+        self.event_history.setMinimumHeight(170)
+        self.sidebar_layout.addWidget(self.event_history)
 
         self.sidebar_layout.addStretch()
 
@@ -90,10 +105,12 @@ class MainWindow(QMainWindow):
 
         self.alarm_phase = None
         self.alarm_flash_on = False
+        self.awaiting_post_mutation_detection = False
 
         self.alarm_timer = QTimer(self)
+        self.alarm_timer.setSingleShot(True)
         self.alarm_timer.setInterval(450)
-        self.alarm_timer.timeout.connect(self.flash_drift_alarm)
+        self.alarm_timer.timeout.connect(self.finish_drift_notification)
 
         self.set_alarm_style("#263238", "#B0BEC5")
 
@@ -123,7 +140,7 @@ class MainWindow(QMainWindow):
         self.plot_history = []
 
         self.timer = QTimer(self)
-        self.timer.setInterval(50)
+        self.timer.setInterval(10)
         self.timer.timeout.connect(self.advance_simulation)
 
         self.start_button.clicked.connect(self.start_simulation)
@@ -137,7 +154,6 @@ class MainWindow(QMainWindow):
         self.threadpool.setMaxThreadCount(1)
 
     def make_placeholder(self, text):
-
         label = QLabel(text)
         label.setAlignment(Qt.AlignCenter)
         label.setMinimumHeight(150)
@@ -160,6 +176,44 @@ class MainWindow(QMainWindow):
             }}
         """)
 
+    def add_event(self, message, step_number=None):
+        if step_number is None:
+            step_number = self.session_state.step_count if self.session_state is not None else 0
+        self.event_history.appendPlainText(f"Step {step_number:,} | {message}")
+        scrollbar = self.event_history.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
+
+    def finish_drift_notification(self):
+        if self.session_state is None:
+            return
+        if self.session_state.drift_status != SessionPhase.ADAPTING:
+            return
+        self.drift_alarm.setText("● ADAPTING")
+        self.set_alarm_style("#78350F", "#FDE68A")
+
+    def update_adaptation_stage(self):
+        if self.session_state is None:
+            self.stage_label.setText("Phase: Idle")
+            return
+
+        phase = self.session_state.drift_status
+        if phase == SessionPhase.BASELINE:
+            self.stage_label.setText("Phase: Monitoring baseline")
+        elif phase == SessionPhase.STABLE:
+            if self.awaiting_post_mutation_detection:
+                self.stage_label.setText("Motor changed | Monitoring for drift")
+            else:
+                remaining = max(0, 700 - self.session_state.stable_step_counter)
+                self.stage_label.setText(f"Phase: Stable | Next motor change in ~{remaining} steps")
+        elif phase == SessionPhase.ADAPTING:
+            adapter = self.online_adapter
+            if adapter.currently_learning:
+                self.stage_label.setText("Phase: Adapting | Training model")
+            elif adapter.currently_evaluating:
+                self.stage_label.setText(f"Phase: Adapting | Evaluating recovery " f"({adapter.evaluation_batch_count}/{EVALUATION_BATCH_SIZE})")
+            else:
+                self.stage_label.setText(f"Phase: Adapting | Collecting samples " f"({adapter.learning_batch_count}/{LEARNING_BATCH_SIZE})")
+
     def flash_drift_alarm(self):
         self.alarm_flash_on = not self.alarm_flash_on
 
@@ -174,25 +228,43 @@ class MainWindow(QMainWindow):
             self.alarm_timer.stop()
             self.drift_alarm.setText("● IDLE")
             self.set_alarm_style("#263238", "#B0BEC5")
+            self.stage_label.setText("Phase: Idle")
+            self.speed_label.setText("Playback: —")
             return
 
-        if self.session_state.drift_status == self.alarm_phase:
+        phase = self.session_state.drift_status
+        if phase == self.alarm_phase:
             return
 
-        self.alarm_phase = self.session_state.drift_status
+        self.alarm_phase = phase
         self.alarm_timer.stop()
 
-        if self.alarm_phase == SessionPhase.ADAPTING:
+        if phase == SessionPhase.ADAPTING:
+            self.awaiting_post_mutation_detection = False
+            self.last_drift_step = self.session_state.step_count
+            self.add_event("CUSUM drift detected; online adaptation started")
             self.drift_alarm.setText("⚠ DRIFT DETECTED")
-            self.alarm_flash_on = False
-            self.flash_drift_alarm()
+            self.set_alarm_style("#DC2626", "#FFFFFF")
             self.alarm_timer.start()
-        elif self.alarm_phase == SessionPhase.STABLE:
+            interval = 10
+        elif phase == SessionPhase.STABLE:
+            self.awaiting_post_mutation_detection = False
+            if self.last_drift_step is not None:
+                elapsed = self.session_state.step_count - self.last_drift_step
+                self.add_event(f"Recovery confirmed ({elapsed:,} adaptation steps)")
+            else:
+                self.add_event("Stable operation confirmed")
             self.drift_alarm.setText("● STABLE")
             self.set_alarm_style("#14532D", "#BBF7D0")
-        elif self.alarm_phase == SessionPhase.BASELINE:
+            interval = 40
+        else: 
             self.drift_alarm.setText("● MONITORING")
             self.set_alarm_style("#1E3A5F", "#BFDBFE")
+            interval = 30
+
+        self.timer.setInterval(interval)
+        self.speed_label.setText(f"Playback: {interval} ms/step")
+        self.update_adaptation_stage()
 
     def start_simulation(self):
         current_state = Current_State(0, 0, 21.0)
@@ -209,6 +281,11 @@ class MainWindow(QMainWindow):
 
         self.online_adapter = OnlineAdapter(self.drift_manager)
 
+        self.event_history.clear()
+        self.last_drift_step = None
+        self.awaiting_post_mutation_detection = False
+        self.alarm_phase = None
+        self.add_event(f"Session started | {model_type.name} | seed {seed}")
         self.update_drift_alarm()
 
         self.plot_history.clear()
@@ -223,7 +300,18 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Status: Running")
 
     def advance_simulation(self):
-        model_input, model_target, prediction, residual = step(self.session_state, self.loaded_model)
+        self.update_drift_alarm()
+        previous_phase = self.session_state.drift_status
+        previous_stable_counter = self.session_state.stable_step_counter
+
+        model_input, model_target, prediction, residual = step(self.session_state, self.loaded_model, schedule_mutations = True)
+
+        if self.session_state.step_count == 500:
+            self.add_event("Initial scheduled motor-parameter mutation")
+            self.awaiting_post_mutation_detection = True
+        elif (previous_phase == SessionPhase.STABLE and previous_stable_counter > 0 and self.session_state.stable_step_counter < previous_stable_counter):
+            self.add_event("Scheduled motor-parameter mutation")
+            self.awaiting_post_mutation_detection = True
 
         self.drift_manager.sliding_window.append(residual)
         self.drift_manager.maintain_sliding_window()
@@ -239,6 +327,7 @@ class MainWindow(QMainWindow):
                 else:
                     self.online_adapter.maintain_adaption(model_input, model_target)
 
+        self.update_adaptation_stage()
         count = self.session_state.step_count
  
         self.step_label.setText(f"Step: {count}")
@@ -259,7 +348,6 @@ class MainWindow(QMainWindow):
             self.redraw_plots()
 
     def pause_simulation(self):
-
         self.timer.stop()
 
         self.redraw_plots()
@@ -270,9 +358,9 @@ class MainWindow(QMainWindow):
         self.end_button.setEnabled(True)
 
         self.status_label.setText("Status: Paused")
+        self.add_event("Simulation paused")
 
     def resume_simulation(self):
-
         self.start_button.setEnabled(False)
         self.pause_button.setEnabled(True)
         self.resume_button.setEnabled(False)
@@ -280,8 +368,10 @@ class MainWindow(QMainWindow):
 
         self.timer.start()
         self.status_label.setText("Status: Running")
+        self.add_event("Simulation resumed")
         
     def end_simulation(self):
+        final_step = self.session_state.step_count if self.session_state is not None else 0
 
         self.timer.stop()
         self.threadpool.waitForDone()
@@ -299,6 +389,7 @@ class MainWindow(QMainWindow):
         self.loaded_model = None
 
         self.status_label.setText("Status: Not Started")
+        self.add_event("Session ended", step_number = final_step)
         self.step_label.setText("Step: 0")
         self.time_label.setText("Simulation Time: 0.000 s")
 
